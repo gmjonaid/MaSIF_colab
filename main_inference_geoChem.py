@@ -1,12 +1,11 @@
-
-# Standard imports:
+# Standard imports
 import numpy as np
 import torch
 from torch_geometric.data import DataLoader
 from torch_geometric.transforms import Compose
 from pathlib import Path
 
-# Custom data loader and model:
+# Custom data loader and model
 from data import ProteinPairsSurfaces, CenterPairAtoms, load_protein_pair
 from data import RandomRotationPairAtoms, NormalizeChemFeatures, iface_valid_filter
 from model import dMaSIF
@@ -17,13 +16,13 @@ args = parser.parse_args()
 model_path = "models/" + args.experiment_name
 save_predictions_path = Path("preds/" + args.experiment_name)
 
-# Ensure reproducibility:
+# Ensure reproducibility
 torch.backends.cudnn.deterministic = True
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed_all(args.seed)
 np.random.seed(args.seed)
 
-# Load dataset
+# Dataset
 transformations = (
     Compose([NormalizeChemFeatures(), CenterPairAtoms(), RandomRotationPairAtoms()])
     if args.random_rotation
@@ -60,27 +59,33 @@ else:
 batch_vars = ["xyz_p1", "xyz_p2", "atom_coords_p1", "atom_coords_p2"]
 test_loader = DataLoader(test_dataset, batch_size=args.batch_size, follow_batch=batch_vars)
 
-# Load model
+# Model
 net = dMaSIF(args)
 net.load_state_dict(torch.load(model_path, map_location=args.device)["model_state_dict"])
 net = net.to(args.device)
 
-# --- Geometry Prediction ---
+# --- Geometry prediction ---
 args.geom = True
 args.chem = False
+args.site = False
 geom_save_path = save_predictions_path / "geometry"
-iterate(
-    net, test_loader, None, args,
-    test=True, save_path=geom_save_path, pdb_ids=test_pdb_ids
-)
+iterate(net, test_loader, None, args, test=True, save_path=geom_save_path, pdb_ids=test_pdb_ids)
 
-# --- Chemical Prediction ---
+# --- Chemical prediction ---
 args.geom = False
 args.chem = True
+args.site = False
 chem_save_path = save_predictions_path / "chemical"
-iterate(
-    net, test_loader, None, args,
-    test=True, save_path=chem_save_path, pdb_ids=test_pdb_ids
-)
+iterate(net, test_loader, None, args, test=True, save_path=chem_save_path, pdb_ids=test_pdb_ids)
 
-print(f"Predictions saved to:\n - {geom_save_path}\n - {chem_save_path}")
+# --- Binding site prediction ---
+args.geom = False
+args.chem = False
+args.site = True
+site_save_path = save_predictions_path / "site"
+iterate(net, test_loader, None, args, test=True, save_path=site_save_path, pdb_ids=test_pdb_ids)
+
+print(f"Predictions saved to:\n"
+      f" - Geometry: {geom_save_path}\n"
+      f" - Chemical: {chem_save_path}\n"
+      f" - Site:     {site_save_path}")

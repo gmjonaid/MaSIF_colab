@@ -92,8 +92,9 @@ def save_protein_batch_single(protein_pair_id, P, save_path, pdb_idx):
     labels = P["labels"].view(-1, 1) if P["labels"] is not None else 0.0 * predictions
 
     coloring = torch.cat([inputs, embedding, predictions, labels], axis=1)
-
-    save_vtk(str(save_path / pdb_id) + f"_pred_emb{emb_id}", xyz, values=coloring)
+# comment out the save_vtk as it is not necessary
+    
+    #save_vtk(str(save_path / pdb_id) + f"_pred_emb{emb_id}", xyz, values=coloring)
     np.save(str(save_path / pdb_id) + "_predcoords", numpy(xyz))
     np.save(str(save_path / pdb_id) + f"_predfeatures_emb{emb_id}", numpy(coloring))
 
